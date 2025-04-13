@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="600px" viewBox="0 0 800 600" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Background -->
+        <rect fill="#F3F4F6" width="800" height="600"/>
+        
+        <!-- Task List -->
+        <g transform="translate(100, 100)">
+            <!-- List Container -->
+            <rect fill="#FFFFFF" x="0" y="0" width="600" height="400" rx="20"/>
+            
+            <!-- Header -->
+            <rect fill="#4F46E5" x="0" y="0" width="600" height="60" rx="20"/>
+            <text font-family="Arial" font-size="24" font-weight="bold" fill="#FFFFFF" x="30" y="40">My Tasks</text>
+            
+            <!-- Tasks -->
+            <g transform="translate(30, 80)">
+                <!-- Task 1 -->
+                <g transform="translate(0, 0)">
+                    <rect fill="#F3F4F6" x="0" y="0" width="540" height="60" rx="10"/>
+                    <circle fill="#10B981" cx="30" cy="30" r="15"/>
+                    <text font-family="Arial" font-size="18" fill="#1F2937" x="60" y="35">Complete project documentation</text>
+                </g>
+                
+                <!-- Task 2 -->
+                <g transform="translate(0, 80)">
+                    <rect fill="#F3F4F6" x="0" y="0" width="540" height="60" rx="10"/>
+                    <circle fill="#F59E0B" cx="30" cy="30" r="15"/>
+                    <text font-family="Arial" font-size="18" fill="#1F2937" x="60" y="35">Review pull requests</text>
+                </g>
+                
+                <!-- Task 3 -->
+                <g transform="translate(0, 160)">
+                    <rect fill="#F3F4F6" x="0" y="0" width="540" height="60" rx="10"/>
+                    <circle fill="#EF4444" cx="30" cy="30" r="15"/>
+                    <text font-family="Arial" font-size="18" fill="#1F2937" x="60" y="35">Fix critical bugs</text>
+                </g>
+            </g>
+            
+            <!-- Add Task Button -->
+            <g transform="translate(450, 320)">
+                <circle fill="#4F46E5" cx="30" cy="30" r="30"/>
+                <text font-family="Arial" font-size="36" font-weight="bold" fill="#FFFFFF" x="20" y="45">+</text>
+            </g>
+        </g>
+    </g>
+</svg> 
