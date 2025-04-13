@@ -4,10 +4,6 @@
 
 ---
 
-![Trackify UI Preview](./assets/trackify_preview.jpg)
-
----
-
 ## 🚀 Features
 
 - ✅ **Task Management** – Create, update, delete, and categorize tasks effortlessly.
@@ -88,5 +84,7 @@
     ng serve
     ```
 Frontend will run at: [http://localhost:4200](http://localhost:4200)
+
+
 
 
