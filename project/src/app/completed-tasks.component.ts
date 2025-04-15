@@ -1,35 +1,44 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TaskService, Task } from './task.service';
-import { RouterModule } from '@angular/router';
+import { TaskService } from './task.service';
+
+interface Task {
+  _id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  created_at: string;
+  user_id: string;
+}
 
 @Component({
-  selector: 'app-completed',
+  selector: 'app-completed-tasks',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule],
   template: `
-    <div class="completed-container">
-      <h2>Completed Tasks</h2>
-      <ul *ngIf="completedTasks.length > 0">
-        <li *ngFor="let task of completedTasks">{{ task.title }}</li>
-      </ul>
-      <p *ngIf="completedTasks.length === 0">No completed tasks yet.</p>
-      <button routerLink="/main" class="btn btn-secondary">Back to Tasks</button>
+    <div class="min-h-screen bg-white p-8">
+      <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-black mb-8">Completed Tasks</h1>
+        
+        <div *ngIf="completedTasks.length === 0" class="text-center text-gray-600">
+          No completed tasks found.
+        </div>
+
+        <div *ngIf="completedTasks.length > 0" class="space-y-4">
+          <div *ngFor="let task of completedTasks" 
+            class="p-6 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow duration-300">
+            <h3 class="text-xl font-semibold text-black mb-2">{{ task.title }}</h3>
+            <p class="text-gray-600 mb-4">{{ task.description }}</p>
+            <div class="flex items-center text-green-600">
+              <span class="mr-2">✓</span>
+              <span>Completed</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
-  styles: [`
-    .completed-container {
-      padding: 20px;
-    }
-    .btn-secondary {
-      margin-top: 20px;
-      background-color: gray;
-      color: white;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-    }
-  `]
+  styles: []
 })
 export class CompletedTasksComponent implements OnInit {
   completedTasks: Task[] = [];
@@ -37,8 +46,13 @@ export class CompletedTasksComponent implements OnInit {
   constructor(private taskService: TaskService) {}
 
   ngOnInit() {
-    this.taskService.getTasks().subscribe(tasks => {
-      this.completedTasks = tasks.filter(task => task.completed);
+    this.taskService.getTasks().subscribe({
+      next: (tasks: Task[]) => {
+        this.completedTasks = tasks.filter((task: Task) => task.completed);
+      },
+      error: (err) => {
+        console.error('Error fetching completed tasks:', err);
+      }
     });
   }
 }

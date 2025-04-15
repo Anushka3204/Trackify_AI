@@ -1,15 +1,18 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { TaskService } from './task.service';
+import { AuthService } from './auth.service';
 
 interface Task {
   _id: string;
   title: string;
   description: string;
   completed: boolean;
+  created_at: string;
+  user_id: string;
 }
 
 @Component({
@@ -18,64 +21,69 @@ interface Task {
   imports: [ReactiveFormsModule, CommonModule],
   template: `
     <div class="min-h-screen bg-white">
+      <!-- Header -->
       <header class="bg-black shadow">
-        <div class="container mx-auto px-4 py-4">
-          <h1 class="text-2xl font-bold text-white">Edit Task</h1>
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-white">Trackify</h1>
+          <div class="flex items-center space-x-4">
+            <div class="text-white">
+              Welcome, {{ authService.getCurrentUser()?.name }}
+            </div>
+            <button (click)="goBack()"
+              class="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-300">
+              Back to Tasks
+            </button>
+          </div>
         </div>
       </header>
 
       <div class="container mx-auto px-4 py-8">
-        <div class="bg-white p-6 rounded-lg shadow max-w-2xl mx-auto border border-gray-200">
-          <form [formGroup]="taskForm" (ngSubmit)="updateTask()" class="space-y-4">
-            <div>
-              <label class="block text-gray-800 mb-2">Title</label>
-              <input type="text" formControlName="title" 
-                class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-black">
-              <div *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" class="text-red-500 mt-1">
-                Title is required
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4 text-black">Edit Task</h2>
+            <form [formGroup]="taskForm" (ngSubmit)="updateTask()" class="space-y-4">
+              <div>
+                <label class="block text-gray-800 mb-2">Title</label>
+                <input type="text" formControlName="title" 
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black">
               </div>
-            </div>
-            <div>
-              <label class="block text-gray-800 mb-2">Description</label>
-              <textarea formControlName="description" rows="3"
-                class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"></textarea>
-              <div *ngIf="taskForm.get('description')?.invalid && taskForm.get('description')?.touched" class="text-red-500 mt-1">
-                Description is required
+              <div>
+                <label class="block text-gray-800 mb-2">Description</label>
+                <textarea formControlName="description" rows="3"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"></textarea>
               </div>
-            </div>
-            <div class="flex items-center space-x-2 py-2">
-              <input type="checkbox" 
-                     [checked]="taskCompleted"
-                     (change)="taskCompleted = !taskCompleted"
-                     class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black">
-              <label class="text-gray-800">Mark as completed</label>
-            </div>
-            <div class="flex space-x-4">
-              <button type="submit" [disabled]="taskForm.invalid"
-                class="flex-1 bg-black text-white py-2 rounded hover:bg-gray-800 disabled:bg-gray-400">
-                Update Task
-              </button>
-              <button type="button" (click)="cancel()"
-                class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600">
-                Cancel
-              </button>
-            </div>
-          </form>
+              <div class="flex items-center space-x-4">
+                <button type="submit" [disabled]="taskForm.invalid"
+                  class="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+                  Update Task
+                </button>
+                <button type="button" (click)="goBack()"
+                  class="px-6 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    :host {
+      display: block;
+    }
+  `]
 })
 export class EditTaskComponent implements OnInit {
   taskForm: FormGroup;
   taskId: string = '';
-  taskCompleted: boolean = false;
 
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private taskService: TaskService,
+    public authService: AuthService
   ) {
     this.taskForm = this.fb.group({
       title: ['', Validators.required],
@@ -84,103 +92,56 @@ export class EditTaskComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.taskId = this.route.snapshot.paramMap.get('id') || '';
-    if (!this.taskId) {
-      console.error('No task ID provided');
-      this.router.navigate(['/main']);
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
       return;
     }
+
+    this.taskId = this.route.snapshot.paramMap.get('id') || '';
+    if (!this.taskId) {
+      this.router.navigate(['/']);
+      return;
+    }
+
     this.loadTask();
   }
 
   loadTask() {
-    if (!this.taskId) {
-      console.error('Cannot load task: No task ID provided');
-      this.router.navigate(['/main']);
-      return;
-    }
-
-    console.log('Loading task with ID:', this.taskId);
-    const headers = { 'Content-Type': 'application/json' };
-    
-    // First try to get the task from the main component's task list
-    const cachedTasks = localStorage.getItem('tasks');
-    if (cachedTasks) {
-      const tasks = JSON.parse(cachedTasks);
-      const task = tasks.find((t: Task) => t._id === this.taskId);
-      if (task) {
-        console.log('Found task in cache:', task);
+    this.taskService.getTask(this.taskId).subscribe({
+      next: (task: Task) => {
         this.taskForm.patchValue({
           title: task.title,
-          description: task.description || ''
+          description: task.description
         });
-        this.taskCompleted = task.completed || false;
-        return;
-      }
-    }
-
-    // If not found in cache, fetch from server
-    this.http.get<Task>(`http://localhost:5000/tasks/${this.taskId}`, { headers })
-      .subscribe({
-        next: (task) => {
-          console.log('Task loaded successfully:', task);
-          if (task && task.title) {
-            this.taskForm.patchValue({
-              title: task.title,
-              description: task.description || ''
-            });
-            this.taskCompleted = task.completed || false;
-            console.log('Form updated with task data:', this.taskForm.value);
-            console.log('Task completed status:', this.taskCompleted);
-          } else {
-            console.error('Invalid task data received:', task);
-            alert('Invalid task data received. Returning to main page.');
-            this.router.navigate(['/main']);
-          }
-        },
-        error: (error) => {
-          console.error('Error loading task:', error);
-          if (error.status === 405) {
-            console.error('Method not allowed. Please check server configuration.');
-          }
-          alert('Failed to load task. Returning to main page.');
-          this.router.navigate(['/main']);
+      },
+      error: (error) => {
+        console.error('Error loading task:', error);
+        if (error.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
         }
-      });
+      }
+    });
   }
 
   updateTask() {
     if (this.taskForm.valid) {
-      const updatedTask = {
-        title: this.taskForm.value.title,
-        description: this.taskForm.value.description,
-        completed: this.taskCompleted
-      };
-
-      console.log('Updating task:', updatedTask);
-      const headers = { 'Content-Type': 'application/json' };
-      this.http.put(`http://localhost:5000/tasks/${this.taskId}`, updatedTask, { headers })
-        .subscribe({
-          next: (response) => {
-            console.log('Task updated successfully:', response);
-            localStorage.setItem('lastViewState', this.taskCompleted ? 'completed' : 'active');
-            this.router.navigate(['/main']);
-          },
-          error: (error) => {
-            console.error('Error updating task:', error);
-            alert('Failed to update task. Please try again.');
+      this.taskService.updateTask(this.taskId, this.taskForm.value).subscribe({
+        next: () => {
+          this.router.navigate(['/main']);
+        },
+        error: (error) => {
+          console.error('Error updating task:', error);
+          if (error.status === 401) {
+            this.authService.logout();
+            this.router.navigate(['/login']);
           }
-        });
-    } else {
-      Object.keys(this.taskForm.controls).forEach(key => {
-        const control = this.taskForm.get(key);
-        control?.markAsTouched();
+        }
       });
-      alert('Please fill in all required fields.');
     }
   }
 
-  cancel() {
+  goBack() {
     this.router.navigate(['/main']);
   }
 } 

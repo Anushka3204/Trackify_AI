@@ -3,9 +3,13 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from bson import ObjectId
 import datetime
+import jwt
+import bcrypt
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+app.config['SECRET_KEY'] = 'your-secret-key'  # Change this in production
 
 # Enable debug mode
 app.debug = True
@@ -14,6 +18,28 @@ app.debug = True
 client = MongoClient("mongodb://localhost:27017/")
 db = client["taskmanager"]
 tasks_collection = db["tasks"]
+users_collection = db["users"]
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+        
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+        
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = users_collection.find_one({"_id": ObjectId(data['user_id'])})
+            if not current_user:
+                return jsonify({'message': 'User not found'}), 401
+        except:
+            return jsonify({'message': 'Token is invalid'}), 401
+        
+        return f(current_user, *args, **kwargs)
+    return decorated
 
 @app.before_request
 def before_request():
@@ -22,46 +48,91 @@ def before_request():
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     return response
 
-# Get all tasks
-@app.route('/tasks', methods=['GET'])
-def get_tasks():
-    tasks = list(tasks_collection.find())
+# User registration
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    data = request.json
+    if users_collection.find_one({"email": data['email']}):
+        return jsonify({"error": "Email already exists"}), 400
+    
+    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
+    user = {
+        "name": data['name'],
+        "email": data['email'],
+        "password": hashed_password,
+        "created_at": datetime.datetime.utcnow()
+    }
+    result = users_collection.insert_one(user)
+    user['_id'] = str(result.inserted_id)
+    del user['password']
+    return jsonify(user), 201
+
+# User login
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    user = users_collection.find_one({"email": data['email']})
+    
+    if not user or not bcrypt.checkpw(data['password'].encode('utf-8'), user['password']):
+        return jsonify({"error": "Invalid email or password"}), 401
+    
+    token = jwt.encode({
+        'user_id': str(user['_id']),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    }, app.config['SECRET_KEY'])
+    
+    return jsonify({
+        'token': token,
+        'user': {
+            'id': str(user['_id']),
+            'name': user['name'],
+            'email': user['email']
+        }
+    })
+
+# Get all tasks for a user
+@app.route('/api/tasks', methods=['GET'])
+@token_required
+def get_tasks(current_user):
+    tasks = list(tasks_collection.find({"user_id": str(current_user['_id'])}))
     for task in tasks:
         task['_id'] = str(task['_id'])
     return jsonify(tasks)
 
 # Get single task
-@app.route('/tasks/<task_id>', methods=['GET'])
-def get_task(task_id):
+@app.route('/api/tasks/<task_id>', methods=['GET'])
+@token_required
+def get_task(current_user, task_id):
     try:
-        print(f"Getting task with ID: {task_id}")
-        task = tasks_collection.find_one({"_id": ObjectId(task_id)})
+        task = tasks_collection.find_one({
+            "_id": ObjectId(task_id),
+            "user_id": str(current_user['_id'])
+        })
         if task:
             task['_id'] = str(task['_id'])
-            print(f"Found task: {task}")
             return jsonify(task)
-        print("Task not found")
         return jsonify({"error": "Task not found"}), 404
     except Exception as e:
-        print(f"Error getting task: {str(e)}")
         return jsonify({"error": "Invalid task ID"}), 400
 
 # Update task
-@app.route('/tasks/<task_id>', methods=['PUT'])
-def update_task(task_id):
+@app.route('/api/tasks/<task_id>', methods=['PUT'])
+@token_required
+def update_task(current_user, task_id):
     try:
         data = request.json
         updated_task = {
             "title": data.get("title"),
             "description": data.get("description"),
-            "completed": data.get("completed", False)
+            "completed": data.get("completed", False),
+            "user_id": str(current_user['_id'])
         }
         result = tasks_collection.update_one(
-            {"_id": ObjectId(task_id)},
+            {"_id": ObjectId(task_id), "user_id": str(current_user['_id'])},
             {"$set": updated_task}
         )
         if result.matched_count == 1:
@@ -69,37 +140,40 @@ def update_task(task_id):
             return jsonify(updated_task)
         return jsonify({"error": "Task not found"}), 404
     except Exception as e:
-        print(f"Error updating task: {str(e)}")
         return jsonify({"error": "Invalid task ID"}), 400
 
 # Delete task
-@app.route('/tasks/<task_id>', methods=['DELETE'])
-def delete_task(task_id):
+@app.route('/api/tasks/<task_id>', methods=['DELETE'])
+@token_required
+def delete_task(current_user, task_id):
     try:
-        result = tasks_collection.delete_one({"_id": ObjectId(task_id)})
+        result = tasks_collection.delete_one({
+            "_id": ObjectId(task_id),
+            "user_id": str(current_user['_id'])
+        })
         if result.deleted_count == 1:
             return jsonify({"message": "Task deleted"})
         return jsonify({"error": "Task not found"}), 404
     except Exception as e:
-        print(f"Error deleting task: {str(e)}")
         return jsonify({"error": "Invalid task ID"}), 400
 
 # Create task
-@app.route('/tasks', methods=['POST'])
-def create_task():
+@app.route('/api/tasks', methods=['POST'])
+@token_required
+def create_task(current_user):
     try:
         data = request.json
         task = {
             "title": data.get("title"),
             "description": data.get("description"),
             "completed": False,
-            "created_at": datetime.datetime.utcnow()
+            "created_at": datetime.datetime.utcnow(),
+            "user_id": str(current_user['_id'])
         }
         result = tasks_collection.insert_one(task)
         task['_id'] = str(result.inserted_id)
         return jsonify(task), 201
     except Exception as e:
-        print(f"Error creating task: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':

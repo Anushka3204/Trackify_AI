@@ -4,18 +4,23 @@ import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { TaskService } from './task.service';
+import { AuthService } from './auth.service';
+import { AiSuggestionsComponent } from './ai-suggestions.component';
 
 interface Task {
   _id: string;
   title: string;
   description: string;
   completed: boolean;
+  created_at: string;
+  user_id: string;
 }
 
 @Component({
   selector: 'app-main',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule, CommonModule, AiSuggestionsComponent],
   template: `
     <div class="min-h-screen bg-white">
       <!-- Header -->
@@ -23,25 +28,28 @@ interface Task {
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 class="text-2xl font-bold text-white">Trackify</h1>
           <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-6 mr-4">
-              <div class="text-white">
-                <span class="font-semibold">Pending:</span> 
-                <span>{{getPendingCount()}}</span>
-              </div>
-              <div class="text-white">
-                <span class="font-semibold">Completed:</span> 
-                <span>{{getCompletedCount()}}</span>
-              </div>
-            </div>
+            <button (click)="router.navigate(['/ai-assistant'])"
+              class="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-300">
+              AI Assistant
+            </button>
             <button (click)="toggleCompleted()" 
               [class]="getToggleButtonClass()">
               {{ showCompleted ? 'Show Active Tasks' : 'Show Completed Tasks' }}
+            </button>
+            <button (click)="logout()"
+              class="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-300">
+              Logout
             </button>
           </div>
         </div>
       </header>
 
       <div class="container mx-auto px-4 py-8">
+        <!-- Welcome Message -->
+        <div class="mb-8">
+          <h2 class="text-3xl font-bold text-black">Welcome, {{ authService.getCurrentUser()?.name }}</h2>
+        </div>
+
         <!-- Task Stats -->
         <div class="grid grid-cols-2 gap-4 mb-8">
           <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
@@ -134,7 +142,9 @@ export class MainComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private router: Router
+    public router: Router,
+    private taskService: TaskService,
+    public authService: AuthService
   ) {
     this.taskForm = this.fb.group({
       title: ['', Validators.required],
@@ -143,13 +153,11 @@ export class MainComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadTasks();
-    // Restore last view state if available
-    const lastViewState = localStorage.getItem('lastViewState');
-    if (lastViewState) {
-      this.showCompleted = lastViewState === 'completed';
-      localStorage.removeItem('lastViewState');
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
     }
+    this.loadTasks();
   }
 
   get filteredTasks() {
@@ -157,18 +165,18 @@ export class MainComponent implements OnInit {
   }
 
   loadTasks() {
-    this.http.get<Task[]>('http://localhost:5000/tasks')
-      .subscribe({
-        next: (tasks) => {
-          this.tasks = tasks;
-          // Store tasks in localStorage for the edit component
-          localStorage.setItem('tasks', JSON.stringify(tasks));
-          console.log('Loaded tasks:', tasks);
-        },
-        error: (error) => {
-          console.error('Error loading tasks:', error);
+    this.taskService.getTasks().subscribe({
+      next: (tasks: Task[]) => {
+        this.tasks = tasks;
+      },
+      error: (error) => {
+        console.error('Error loading tasks:', error);
+        if (error.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
         }
-      });
+      }
+    });
   }
 
   addTask() {
@@ -177,16 +185,19 @@ export class MainComponent implements OnInit {
         ...this.taskForm.value,
         completed: false
       };
-      this.http.post('http://localhost:5000/tasks', newTask)
-        .subscribe({
-          next: () => {
-            this.taskForm.reset();
-            this.loadTasks();
-          },
-          error: (error) => {
-            console.error('Error adding task:', error);
+      this.taskService.createTask(newTask).subscribe({
+        next: (task) => {
+          this.taskForm.reset();
+          this.tasks.push(task);
+        },
+        error: (error) => {
+          console.error('Error adding task:', error);
+          if (error.status === 401) {
+            this.authService.logout();
+            this.router.navigate(['/login']);
           }
-        });
+        }
+      });
     }
   }
 
@@ -197,48 +208,41 @@ export class MainComponent implements OnInit {
       completed: !task.completed
     };
 
-    console.log('Toggling task status:', updatedTask);
-    this.http.put(`http://localhost:5000/tasks/${task._id}`, updatedTask)
-      .subscribe({
-        next: (response: any) => {
-          console.log('Task status updated successfully:', response);
-          // Update the task in the local array
-          const taskIndex = this.tasks.findIndex(t => t._id === task._id);
-          if (taskIndex !== -1) {
-            this.tasks[taskIndex] = { ...task, completed: !task.completed };
-          }
-          
-          // If the task was completed and we're viewing active tasks,
-          // or if the task was uncompleted and we're viewing completed tasks,
-          // reload the tasks to ensure the list is up to date
-          if (this.showCompleted !== updatedTask.completed) {
-            this.loadTasks();
-          }
-        },
-        error: (error) => {
-          console.error('Error updating task status:', error);
-          alert('Failed to update task status. Please try again.');
-          // Revert the local change if the server update failed
-          this.loadTasks();
+    this.taskService.updateTask(task._id, updatedTask).subscribe({
+      next: (response: any) => {
+        const taskIndex = this.tasks.findIndex(t => t._id === task._id);
+        if (taskIndex !== -1) {
+          this.tasks[taskIndex] = { ...task, completed: !task.completed };
         }
-      });
+      },
+      error: (error) => {
+        console.error('Error updating task status:', error);
+        if (error.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
+        }
+      }
+    });
   }
 
   editTask(task: Task) {
-    // Store current filter state before navigating
-    localStorage.setItem('lastViewState', this.showCompleted ? 'completed' : 'active');
-    this.router.navigate(['/edit', task._id]);
+    this.router.navigate(['/edit-task', task._id]);
   }
 
   deleteTask(taskId: string) {
     if (confirm('Are you sure you want to delete this task?')) {
-      this.http.delete(`http://localhost:5000/tasks/${taskId}`)
-        .subscribe({
-          next: () => this.loadTasks(),
-          error: (error) => {
-            console.error('Error deleting task:', error);
+      this.taskService.deleteTask(taskId).subscribe({
+        next: () => {
+          this.tasks = this.tasks.filter(task => task._id !== taskId);
+        },
+        error: (error) => {
+          console.error('Error deleting task:', error);
+          if (error.status === 401) {
+            this.authService.logout();
+            this.router.navigate(['/login']);
           }
-        });
+        }
+      });
     }
   }
 
@@ -258,5 +262,9 @@ export class MainComponent implements OnInit {
     return this.showCompleted
       ? 'px-4 py-2 rounded-lg transition duration-200 bg-green-500 text-white hover:bg-green-600'
       : 'px-4 py-2 rounded-lg transition duration-200 bg-white text-black hover:bg-gray-200';
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }
