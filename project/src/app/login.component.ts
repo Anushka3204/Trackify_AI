@@ -20,13 +20,16 @@ import { AuthService } from './auth.service';
           <div>
             <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
             <input type="email" id="email" [(ngModel)]="email" name="email" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black">
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+              [disabled]="showOTPInput">
           </div>
 
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-            <input type="password" id="password" [(ngModel)]="password" name="password" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black">
+          <div *ngIf="showOTPInput">
+            <label for="otp" class="block text-sm font-medium text-gray-700">Enter OTP</label>
+            <input type="text" id="otp" [(ngModel)]="otp" name="otp" required
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+              placeholder="Enter the 6-digit OTP sent to your email">
+            <p class="mt-2 text-sm text-gray-500">OTP has been sent to your registered email address</p>
           </div>
 
           <div class="flex items-center justify-between">
@@ -39,12 +42,16 @@ import { AuthService } from './auth.service';
 
           <button type="submit"
             class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
-            Sign in
+            {{ showOTPInput ? 'Verify OTP' : 'Send OTP' }}
           </button>
         </form>
 
         <div *ngIf="error" class="mt-4 text-center text-red-600">
           {{ error }}
+        </div>
+
+        <div *ngIf="success" class="mt-4 text-center text-green-600">
+          {{ success }}
         </div>
       </div>
     </div>
@@ -53,19 +60,40 @@ import { AuthService } from './auth.service';
 })
 export class LoginComponent {
   email: string = '';
-  password: string = '';
+  otp: string = '';
   error: string = '';
+  success: string = '';
+  showOTPInput: boolean = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
   onSubmit() {
-    this.authService.login(this.email, this.password).subscribe({
-      next: () => {
-        this.router.navigate(['/main']);
-      },
-      error: (err) => {
-        this.error = 'Invalid email or password';
-      }
-    });
+    if (!this.showOTPInput) {
+      // First step: Generate OTP
+      this.authService.generateOTP(this.email).subscribe({
+        next: (response) => {
+          this.showOTPInput = true;
+          this.error = '';
+          this.success = 'OTP has been sent to your email. Please check your inbox.';
+        },
+        error: (err) => {
+          if (err.status === 404) {
+            this.error = 'This email is not registered. Please sign up first.';
+          } else {
+            this.error = 'Failed to send OTP. Please try again.';
+          }
+        }
+      });
+    } else {
+      // Second step: Verify OTP
+      this.authService.verifyOTP(this.email, this.otp).subscribe({
+        next: () => {
+          this.router.navigate(['/main']);
+        },
+        error: (err) => {
+          this.error = 'Invalid OTP. Please try again.';
+        }
+      });
+    }
   }
 } 

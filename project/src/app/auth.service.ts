@@ -26,6 +26,25 @@ export class AuthService {
     }
   }
 
+  generateOTP(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/generate-otp`, { email });
+  }
+
+  verifyOTP(email: string, otp: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/verify-otp`, { email, otp }).pipe(
+      tap((response: any) => {
+        if (response.token && response.user) {
+          const userData = {
+            ...response.user,
+            token: response.token
+          };
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+          this.currentUserSubject.next(userData);
+        }
+      })
+    );
+  }
+
   login(email: string, password: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/login`, { email, password }).pipe(
       tap((response: any) => {
