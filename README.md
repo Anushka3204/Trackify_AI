@@ -9,18 +9,33 @@ Trackify-AI is a modern task management application that combines traditional ta
   - Mark tasks as complete/incomplete
   - View task statistics and progress
   - Separate views for active and completed tasks
-
-- **AI-Powered Assistance**
+    
+  **AI-Powered Assistance**
   - AI task breakdown suggestions
   - Smart task analysis
   - Productivity insights
   - Task prioritization recommendations
+  - Time estimation of each task
+
 
 - **User Experience**
   - Clean, modern interface
   - Responsive design
   - Real-time updates
   - Secure authentication
+  - Dark/light mode support
+  - Customizable dashboard
+
+- **Security & Authentication**
+  - JWT-based authentication
+  - Secure password hashing
+  - Email-based OTP verification
+  - Session management
+  - Protected API endpoints
+  - Environment variable configuration
+
+- **Email Integration**
+  - OTP-based login verification
 
 ## 🛠️ Tech Stack
 
@@ -35,6 +50,8 @@ Trackify-AI is a modern task management application that combines traditional ta
   - Python
   - MongoDB
   - JWT Authentication
+  - Flask-Mail for email services
+  - Flask-CORS for cross-origin support
 
 ## 🚀 Getting Started
 
@@ -43,13 +60,14 @@ Trackify-AI is a modern task management application that combines traditional ta
 - Node.js (v14 or higher)
 - Python (v3.8 or higher)
 - MongoDB
+- Gmail account (for email services)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Anushka3204/Trackify-AI.git
-   cd Trackify-AI
+   git clone https://github.com/Anushka3204/Trackify_AI.git
+   cd Trackify_AI
    ```
 
 2. **Install Frontend Dependencies**
@@ -68,7 +86,13 @@ Trackify-AI is a modern task management application that combines traditional ta
 
 4. **Environment Setup**
    - Create a `.env` file in the `api` directory
-   - Add your MongoDB connection string and JWT secret
+   - Add the following environment variables:
+     ```
+     MONGODB_URI=your_mongodb_connection_string
+     JWT_SECRET_KEY=your_jwt_secret
+     MAIL_USERNAME=your_gmail_address
+     MAIL_PASSWORD=your_gmail_app_password
+     ```
 
 5. **Run the Application**
    - Start the backend server:
@@ -85,60 +109,6 @@ Trackify-AI is a modern task management application that combines traditional ta
 6. **Access the Application**
    - Open your browser and navigate to `http://localhost:4200`
 
-## 📱 Features in Detail
-
-### Task Management
-- Create tasks with titles and descriptions
-- Mark tasks as complete or incomplete
-- Edit existing tasks
-- Delete tasks
-- View task statistics
-
-### AI Assistant
-- Break down complex tasks into subtasks
-- Get task analysis and recommendations
-- Receive productivity insights
-- Smart task prioritization
-
-### User Interface
-- Clean, modern design
-- Responsive layout
-- Dark/light mode support
-- Intuitive navigation
-
-## 🔒 Security
-
-- JWT-based authentication
-- Secure password hashing
-- Protected API endpoints
-- Environment variable configuration
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👏 Acknowledgments
-
-- Thanks to all contributors who have helped shape this project
-- Special thanks to the Angular and Flask communities
-- Inspired by modern task management applications
-
-## 📞 Contact
-
-Anushka - [@Anushka3204](https://github.com/Anushka3204)
-
-Project Link: [https://github.com/Anushka3204/Trackify-AI](https://github.com/Anushka3204/Trackify-AI)
-
-
-
-
