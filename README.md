@@ -7,24 +7,19 @@ Trackify-AI is a modern task management application that combines traditional ta
 - **Task Management**
   - Create, edit, and delete tasks
   - Mark tasks as complete/incomplete
-  - View task statistics and progress
   - Separate views for active and completed tasks
     
-  **AI-Powered Assistance**
+- **AI-Powered Assistance**
   - AI task breakdown suggestions
   - Smart task analysis
   - Productivity insights
   - Task prioritization recommendations
   - Time estimation of each task
 
-
 - **User Experience**
   - Clean, modern interface
   - Responsive design
-  - Real-time updates
   - Secure authentication
-  - Dark/light mode support
-  - Customizable dashboard
 
 - **Security & Authentication**
   - JWT-based authentication
@@ -32,10 +27,15 @@ Trackify-AI is a modern task management application that combines traditional ta
   - Email-based OTP verification
   - Session management
   - Protected API endpoints
-  - Environment variable configuration
-
+  
 - **Email Integration**
   - OTP-based login verification
+
+- **Analytics & Tracking**
+  - Google Analytics integration
+  - User behavior tracking
+  - Performance monitoring
+  - Usage statistics
 
 ## 🛠️ Tech Stack
 
@@ -44,6 +44,7 @@ Trackify-AI is a modern task management application that combines traditional ta
   - TypeScript
   - Tailwind CSS
   - Angular Material
+  - Google Analytics
 
 - **Backend**
   - Flask
@@ -61,6 +62,7 @@ Trackify-AI is a modern task management application that combines traditional ta
 - Python (v3.8 or higher)
 - MongoDB
 - Gmail account (for email services)
+- Google Analytics account (for tracking)
 
 ### Installation
 
@@ -92,9 +94,17 @@ Trackify-AI is a modern task management application that combines traditional ta
      JWT_SECRET_KEY=your_jwt_secret
      MAIL_USERNAME=your_gmail_address
      MAIL_PASSWORD=your_gmail_app_password
+     GA_TRACKING_ID=your_google_analytics_tracking_id
      ```
 
-5. **Run the Application**
+5. **Google Analytics Setup**
+   - Create a Google Analytics account
+   - Create a new property for your application
+   - Get your tracking ID (GA_TRACKING_ID)
+   - Add the tracking ID to your environment variables
+   - The tracking code is already integrated in the frontend
+
+6. **Run the Application**
    - Start the backend server:
      ```bash
      cd api
@@ -106,9 +116,9 @@ Trackify-AI is a modern task management application that combines traditional ta
      ng serve
      ```
 
-6. **Access the Application**
+7. **Access the Application**
    - Open your browser and navigate to `http://localhost:4200`
+   - Analytics will automatically start tracking user interactions
 
 ## 📝 License
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
